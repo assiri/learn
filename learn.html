@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>المساعد التعليمي</title>
+
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+
+
+    <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-firestore.js"></script>
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <style>
+      /* mini reset */
+body{
+  margin: 0;
+  background: #fafafa;
+}
+body,h1,h2,p,a,input{
+  color: #555;
+  font-family: Consolas, Arial;
+  text-decoration: none;
+}
+ul{
+  margin: 0;
+  padding: 0;
+}
+
+/* header styles */
+header{
+  width: 100%;
+  padding: 20px;
+  text-align: right;
+  background: white;
+  box-sizing: border-box;
+  box-shadow: 0px 0px 6px rgba(0,0,0,0.1);
+}
+header a{
+  margin-left: 10px;
+  border-bottom: 2px solid #ffe100;
+  padding: 4px;
+  cursor: pointer;
+}
+header a:hover{
+  background: #ffe100;
+  color: black;
+}
+a:hover{
+  background: #ffe100;
+  color: black;
+}
+i:hover{
+  background: #ffe100;
+  color: black;
+}
+/* content styles */
+.content{
+  max-width: 800px;
+ padding-right: 10px;
+  margin: 25px auto 0;
+}
+
+/* request list styles */
+ .request-list li{
+
+  padding: 20px;
+  margin: 10px auto;
+  list-style-type: none;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 1px 1px 4px rgba(0,0,0,0.1);
+   display: flex;
+  justify-content: space-between; 
+} 
+
+.request-list .votes{
+  position: relative;
+  top: -5px;
+  z-index: 0;
+}
+.request-list .upvote{
+  cursor: pointer;
+  border-radius: 50%;
+}
+.request-list .upvote:active{
+  color: black;
+  background: #ffe100;
+}
+
+/* modal styles */
+.modal{
+  width: 450px;
+  padding: 20px;
+  margin: 100px auto;
+  border-radius: 10px;
+  background: white;
+  box-shadow: 0px 0px 8px rgba(0,0,0,0.1);
+  text-align: center;
+}
+.new-request{
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  background: rgba(0,0,0,0.4);
+  z-index: 1;
+  display: none;
+}
+.new-request.open{
+  display: block;
+}
+
+/* form element styles */
+input{
+  display: block;
+  margin: 8px 0;
+  padding: 8px 2px;
+  border-width: 0 0 2px 0;
+  width: 100%;
+}
+.editor{
+  width: auto;
+  height: 250px;
+}
+
+.textareaqa{
+  display: none;
+  margin: 8px 0;
+  padding: 8px 2px;
+ 
+  width: 100%;
+  height: 60px;
+}
+button{
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: #ffe100;
+  border: 0;
+  font-weight: bold;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* auth styles */
+.auth{
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  background: #fafafa;
+  display: none;
+  z-index: 1;
+}
+.auth.open{
+  display: block;
+}
+.auth a{
+  text-decoration: underline;
+  cursor: pointer;
+}
+.auth .modal{
+  display: none;
+}
+.auth .modal.active{
+  display: block;
+}
+
+.ed {
+  direction: rtl;
+  text-align: justify;
+}
+.link {
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.active{
+  display: block;
+}
+
+.an {
+  text-decoration: none;
+  cursor: pointer;
+}
+span.an:hover{
+  background: #ffe100;
+  color: black;
+}
+    </style>
+  </head>
+  <body>
+  
+
+    <!-- auth modals -->
+    <div class="auth open">
+      <div class="modal">
+        <h2>دخول</h2>
+        <form class="login">
+          <input type="text" name="email" placeholder="البريد الإلكتروني">
+          <input type="password" name="password" placeholder="كلمة المرور">
+          <button>Login</button>
+          <p class="error"></p>
+        </form>
+        <div>لم اسجل <a class="switch">تسجيل</a></div>
+      </div>
+      <div class="modal">
+        <h2>تسجيل</h2>
+        <form class="register">
+          <input type="text" name="email" placeholder="البريد الإلكتروني">
+          <input type="password" name="password" placeholder="كلمة المرور">
+          <button>تسجيل</button>
+          <p class="error"></p>
+        </form>
+        <div>لدي حساب <a class="switch">دخول</a></div>
+      </div>
+    </div>
+
+    <!-- new request modal -->
+    <div class="new-request">
+      <div class="modal">
+        <h3>المساعد</h3>
+        <form>
+          <input type="text" name="request" placeholder="العنوان...">
+       
+          <input style="display:none;" #fileInput type="file" accept="image/*" capture="File" id="fileInput">
+          <button type="button" onclick="fileInput.click()"><i class="material-icons">cloud_upload</i> </button>
+          <button type="button" onclick="toggleEd(event)"><i class="material-icons">list</i> </button>
+          <textarea  class="textareaqa" name="links" id="links"  placeholder="روابط..."></textarea>
+          <div  id="editor" class="editor"></div>
+          <textarea  class="textareaqa"  id="qa"  placeholder="اسئله..."></textarea>
+        
+          <button>ارسال</button>
+          <p class="error"></p>
+        </form>
+      </div>
+    </div>
+    
+    <header>
+      <nav>
+        <a class="add-request">اضافة</a>
+        <a class="sign-out">خروج</a>
+      </nav>
+    </header>
+
+    <section class="content" id="app">
+      <h2>المساعد</h2>
+      <ul class="request-list" id="data"> 
+        
+      </ul>
+    </section>
+     
+    <script>
+//===== app
+
+var firebaseConfig = {
+    apiKey: "AIzaSyCIXotGNHWg0VEPJO8hhkwshIPNa7rHqQs",
+    authDomain: "abegssocial.firebaseapp.com",
+    databaseURL: "https://abegssocial.firebaseio.com",
+    projectId: "abegssocial",
+    storageBucket: "abegssocial.appspot.com",
+    messagingSenderId: "663398026366",
+    appId: "1:663398026366:web:655e90ee217ad964"
+};
+// Initialize Firebase
+let quill = new Quill('#editor', {theme: 'snow'});
+firebase.initializeApp(firebaseConfig);
+let db=firebase.firestore();
+const requestModal = document.querySelector('.new-request');
+const requestLink = document.querySelector('.add-request');
+const requestForm = document.querySelector('.new-request form');
+
+let fileUpload = requestForm.querySelector("#fileInput")
+        fileUpload.addEventListener('change', upload);
+
+// open request modal
+requestLink.addEventListener('click', () => {
+  requestModal.classList.add('open');
+});
+
+// close request modal
+requestModal.addEventListener('click', (e) => {
+  if (e.target.classList.contains('new-request')) {
+    requestModal.classList.remove('open');
+  }
+});
+
+// add a new request
+requestForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  let links=requestForm.links.value.split('\n');
+  let rlinks=links.filter(link=>link !='')
+  let ed=quill.root.innerHTML; //quill.container.innerHTML 
+  let qa=document.getElementById('qa').value;
+  
+  const addRequest =db.collection("pposts").add({ed,qa, name: requestForm.request.value,createdAt:firebase.firestore.FieldValue.serverTimestamp(),links:rlinks })
+  .then(() => {
+    requestForm.reset();
+    requestForm.querySelector('.error').textContent = '';
+    requestModal.classList.remove('open');
+  })
+  .catch(error => {
+    requestForm.querySelector('.error').textContent = error.message;
+  });
+});
+function toggleEd(ev){
+ let links=document.getElementById('links');
+ let qa=document.getElementById('qa');
+qa.classList.toggle('active');
+links.classList.toggle('active');
+}
+async function upload(vt) {
+            let firstFile = vt.target.files[0]
+            if(firstFile.size<5*1024*1024){
+            let name = `images/${new Date().getTime()}${firstFile.name}`
+            let storageRef = firebase.app().storage().ref(name);
+            let uploadTask = await storageRef.put(firstFile).catch(error=>alert(error.message))    
+            let url = await uploadTask.ref.getDownloadURL()
+            requestForm.querySelector('#links').value +=url+'\n';
+            } else {
+                alert('big size')
+            }
+           // alert(url)
+        }
+// notification
+const notification = document.querySelector('.notification');
+
+const showNotification = (message) => {
+  notification.textContent = message;
+  notification.classList.add('active');
+  setTimeout(() => {
+    notification.classList.remove('active');
+    notification.textContent = '';
+  }, 4000);
+};
+//====== auth
+const authSwitchLinks = document.querySelectorAll('.switch');
+const authModals = document.querySelectorAll('.auth .modal');
+const authWrapper = document.querySelector('.auth');
+const registerForm = document.querySelector('.register');
+const loginForm = document.querySelector('.login');
+const signOut = document.querySelector('.sign-out');
+
+// toggle auth modals
+authSwitchLinks.forEach(link => {
+  link.addEventListener('click', () => {
+    authModals.forEach(modal => modal.classList.toggle('active'));
+  });
+});
+
+// register form
+registerForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  
+  const email = registerForm.email.value;
+  const password = registerForm.password.value;
+
+  firebase.auth().createUserWithEmailAndPassword(email, password)
+    .then(user => {
+      console.log('registered', user);
+      registerForm.reset();
+    })
+    .catch(error => {
+      registerForm.querySelector('.error').textContent = error.message;
+    });
+});
+
+// login form
+loginForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  
+  const email = loginForm.email.value;
+  const password = loginForm.password.value;
+
+  firebase.auth().signInWithEmailAndPassword(email, password)
+    .then(user => {
+      console.log('logged in', user);
+      loginForm.reset();
+    })
+    .catch(error => {
+      loginForm.querySelector('.error').textContent = error.message;
+    });
+});
+
+// sign out
+signOut.addEventListener('click', () => {
+  firebase.auth().signOut()
+    .then(() => console.log('signed out'));
+});
+
+// auth listener
+firebase.auth().onAuthStateChanged(user => {
+  if (user) {
+   
+getData();
+    authWrapper.classList.remove('open');
+    authModals.forEach(modal => modal.classList.remove('active'));
+  } else {
+    authWrapper.classList.add('open');
+    authModals[0].classList.add('active');
+
+  }
+});
+async function getData(){
+  /* 
+let data=await db.collection('pposts').orderBy('createdAt','desc').get().then(snap=>snap.docs.map(doc=>({id:doc.id,...doc.data()})));
+let html=data.map(rec=>(`<li>${rec.name}</li>`))
+document.querySelector("#data").innerHTML=html.join(""); 
+*/
+const gQa=(q)=>{
+  let q1= q.split('\n');
+  let text=q1[0].split(/[؟?]/)[0];
+  let an=q1[0].split(/[؟?]/)[1].split('|').map(r=>{
+    let res=''
+    if (r.includes('*')){
+    res +=`<br><span class="an" onclick="alert('نعم')">${r.replace('*','')}</span>`
+    } else{
+      res +=`</br><span class="an" onclick="alert('لا')">${r.replace(/[,،]/gi,'')}</span>`
+    }
+   return res
+  })
+  return `<span><b>${text}؟</b></span><span>${an.join("")}</span>`;
+}
+let uid=await firebase.auth().currentUser.uid;
+let icon= "near_me";
+let ed='',qa=''
+const ref = db.collection('pposts').orderBy('createdAt', 'desc');
+    ref.onSnapshot(snapshot => {
+      let data = [];
+      snapshot.forEach(doc => {
+        data.push({...doc.data(), id: doc.id}); 
+      });
+      let html=data.map(rec=>{
+        if(rec.flows && rec.flows.includes(uid)) {icon='check'} else {icon='near_me'}
+        if(rec.ed){ ed=rec.ed} else {ed=''}
+        if(rec.qa){ 
+          qa=gQa(rec.qa)
+          } 
+          else {qa=''}
+         // qa=gQa("ما هو التعليم الإلكتروني؟ | elearning*|machin learning")
+      return (`<li>${rec.name} <ul><i onclick="recFlow(event)" data-id="${rec.id}" class="material-icons upvote">${icon}</i> <i onclick="reLike(event)" data-id="${rec.id}" class="material-icons upvote">favorite_border</i><span class="votes"> ${rec.likes || '0'}</span> <i onclick="recDelete(event)" data-id="${rec.id}" class="material-icons upvote">delete_forever</i></ul></li> ${getLinks(rec.links,rec.id)} <div class="ed">${ed}</div>${qa}`);
+      });
+      document.querySelector("#data").innerHTML=html.join(""); 
+    });
+    
+}
+async function recFlow(ev){
+  //firebase.firestore.FieldValue.arrayUnion and firebase.firestore.FieldValue.arrayRemove 
+  
+  ev.preventDefault()
+  let uid=await firebase.auth().currentUser.uid 
+ 
+let id = ev.target.getAttribute('data-id');
+  let yes=confirm("Are you sure to flow"); 
+  if(yes && uid){
+    await db.collection('pposts').doc(id).set({flows:firebase.firestore.FieldValue.arrayUnion(uid)},{merge:true});
+  }
+
+}
+async function reLike(ev){
+  ev.preventDefault()
+let id = ev.target.getAttribute('data-id');
+  let yes=confirm("Are you sure to Like");
+  if(yes){
+    const inc = firebase.firestore.FieldValue.increment(+1);
+    await db.collection('pposts').doc(id).set({likes:inc},{merge:true});
+  }
+}
+async function recDelete(ev){
+  ev.preventDefault()
+let id = ev.target.getAttribute('data-id');
+  let yes=confirm("Are you sure to delete");
+  if(yes){
+    await db.collection('pposts').doc(id).delete();
+  }
+}
+function getLinks(links,id){
+    let res=links.map(l=>`<a class="link" href=${l} target="_blank"> <i class="material-icons">missed_video_call</i> </a> <span class="an" data-l="${l}"  data-id="${id}"onclick="delLink(event)">x</span>`)
+    return res.join("")
+
+    } 
+async function delLink(ev){
+   let l = ev.target.getAttribute('data-l');
+  let id=ev.target.getAttribute('data-id');
+  let c="https://firebasestorage.googleapis.com/v0/b/abegssocial.appspot.com/o/";
+  if(l.includes(c)){
+    let name=l.split('?')[0].substring(c.length).replace('%2F','/');
+    let fRef=firebase.app().storage().ref(name);
+  await fRef.delete().catch((error)=>alert(error.message));
+  } 
+  await db.collection('pposts').doc(id).set({links:firebase.firestore.FieldValue.arrayRemove(l)},{merge:true})
+  
+}
+
+    </script>
+  </body>
+</html>
